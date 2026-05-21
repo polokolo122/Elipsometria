@@ -1,0 +1,29 @@
+# Deep Learning Ellipsometry (Wersja Podstawowa)
+
+Projekt naukowo-badawczy wykorzystujący metody uczenia maszynowego (Deep Learning) do rozwiązywania problemu odwrotnego w elipsometrii spektroskopowej. System potrafi na podstawie widm elipsometrycznych ($\Psi$ i $\Delta$) automatycznie sklasyfikować rodzaj materiału oraz precyzyjnie wyznaczyć jego grubość.
+
+## Opis Projektu
+
+Tradycyjna analiza danych elipsometrycznych wymaga żmudnego dopasowywania modeli dyspersyjnych przez eksperta. Niniejszy projekt automatyzuje ten proces, wykorzystując jednowymiarowe konwolucyjne sieci neuronowe (1D-CNN) z mechanizmem wielozadaniowego uczenia (Multi-Task Learning).
+
+Model bazuje na danych wygenerowanych syntetycznie przy użyciu metody macierzy przejścia (Transfer Matrix Method - TMM) oraz przybliżenia ośrodka efektywnego Bruggemana (EMA) do modelowania chropowatości.
+
+### Główne cechy:
+* **Fizyczny model generatywny:** Szybki symulator zjawisk optycznych oparty na równaniach Fresnela, pobierający rzeczywiste stałe optyczne ($n$, $k$) bezpośrednio z bazy `refractiveindex.info`.
+* **Multi-Task 1D-CNN:** Architektura sieci zdolna do jednoczesnej analizy kształtu widma pod kątem klasyfikacji (1 z 10 materiałów) oraz regresji ciągłej (grubość od 10 do 800 nm, szorstkość 0-10 nm).
+* **Fizyczne ograniczenia:** Zastosowanie wiedzy domenowej (ograniczenie maksymalnej grubości warstw silnie absorbujących, takich jak TiN czy a-Si, do 150 nm ze względu na głębokość wnikania światła), co drastycznie redukuje błąd predykcji wieloznaczności (Fringe Ambiguity).
+
+## Struktura Repozytorium
+
+* `data_fetcher.py` - Interfejs łączący się z bazą danych refractiveindex.info w celu pobierania i standaryzacji stałych optycznych.
+* `dataset_generator.py` - Silnik fizyczny obliczający widma $\Psi$ i $\Delta$ dla zadanych parametrów przy kącie padania 70°.
+* `generate_dataset.py` - Skrypt masowo generujący zestaw danych uczących (100 000+ próbek) zapisywany do pliku `.csv`.
+* `train_model.py` - Skrypt przygotowujący dane (normalizacja) i trenujący architekturę 1D-CNN.
+* `test_model.py` - Moduł ewaluacyjny sprawdzający skuteczność wytrenowanego modelu na zbiorze testowym (obliczanie błędu MAE).
+
+## Wymagania (Dependencies)
+
+Do uruchomienia projektu wymagane jest środowisko Python 3.9+ oraz następujące biblioteki:
+
+```bash
+pip install torch numpy pandas scikit-learn matplotlib tqdm tmm refractiveindex
