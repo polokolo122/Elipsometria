@@ -1,8 +1,7 @@
 """
-Generator zestawu danych uczących (Dataset Builder).
-Zarządza masową generacją syntetycznych widm elipsometrycznych dla różnych
-typów materiałów, wymuszając ograniczenia fizyczne (np. głębokość wnikania światła).
-Zapisuje wyniki do zoptymalizowanego pliku CSV.
+Generator macierzy danych (Dataset Builder).
+Wykorzystuje model sprzężony do masowej generacji widm z zachowaniem domenowych
+limitów fizycznych głębokości wnikania dla ośrodków silnie absorbujących.
 """
 
 import os
@@ -14,7 +13,7 @@ from tqdm import tqdm
 from data_fetcher import MaterialOpticalConstants
 from dataset_generator import calculate_ellipsometry
 
-# Konfiguracja bazy materiałów i referencji
+# Konfiguracja indeksu badanych materiałów
 MATERIALS_DB = {
     'SiO2': ('main', 'SiO2', 'Malitson'),
     'Si3N4': ('main', 'Si3N4', 'Luke'),
@@ -30,7 +29,8 @@ MATERIALS_DB = {
 
 SAMPLES_PER_MATERIAL = 10000
 
-# Limity fizyczne wynikające ze zjawiska absorpcji i wieloznaczności interferencyjnej
+# Redukcja obszaru wieloznaczności (Fringe Ambiguity Limit)
+# Nałożenie granic fizycznej widoczności podłoża (Penetration Depth)
 MAX_THICKNESS = {
     'TiN': 150.0,
     'a-Si': 150.0
@@ -38,28 +38,25 @@ MAX_THICKNESS = {
 
 
 def generate_database():
-    """
-    Uruchamia główną pętlę generującą widma i kompiluje je do formatu Pandas DataFrame.
-    """
+    """Generuje instancje danych i serializuje wynikowy tensor do pliku CSV."""
     fetcher = MaterialOpticalConstants()
     wavelengths = 1239.84 / fetcher.energy_grid
 
-    print("Pobieranie stałych optycznych podłoża (Si)...")
+    print("Inicjalizacja środowiska i ekstrakcja stałych optycznych...")
     n_si, k_si = fetcher.get_nk('main', 'Si', 'Franta-25C')
 
     materials_nk = {}
-    print("Pobieranie stałych optycznych materiałów analitycznych...")
     for mat_name, (shelf, book, page) in MATERIALS_DB.items():
         materials_nk[mat_name] = fetcher.get_nk(shelf, book, page)
 
     dataset_rows = []
-    print(f"\nGeneracja: {SAMPLES_PER_MATERIAL} próbek na materiał (AOI = 70°)")
+    print(f"\nGeneracja (Wolumen: {SAMPLES_PER_MATERIAL} próbek / klasę)")
 
     for mat_name in MATERIALS_DB.keys():
         n_mat, k_mat = materials_nk[mat_name]
         limit_grubosci = MAX_THICKNESS.get(mat_name, 800.0)
 
-        for _ in tqdm(range(SAMPLES_PER_MATERIAL), desc=f"{mat_name} (do {limit_grubosci} nm)"):
+        for _ in tqdm(range(SAMPLES_PER_MATERIAL), desc=f"Synteza: {mat_name}"):
             thickness = random.uniform(10.0, limit_grubosci)
             roughness = random.uniform(0.0, 10.0)
 
@@ -80,13 +77,13 @@ def generate_database():
 
             dataset_rows.append(row_data)
 
-    print("\nKompilacja i eksport do pliku CSV...")
+    print("\nSerializacja do DataFrame...")
     df = pd.DataFrame(dataset_rows)
     csv_filename = "ellipsometry_dataset.csv"
     df.to_csv(csv_filename, index=False)
 
-    file_size_mb = os.path.getsize(csv_filename) / (1024 * 1024)
-    print(f"Zakończono. Plik wyjściowy: {csv_filename} ({file_size_mb:.2f} MB, N={len(df)})")
+    size_mb = os.path.getsize(csv_filename) / (1024 * 1024)
+    print(f"Eksport zakończony: {csv_filename} ({size_mb:.2f} MB, Ilość: {len(df)})")
 
 
 if __name__ == "__main__":

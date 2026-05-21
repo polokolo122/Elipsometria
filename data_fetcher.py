@@ -1,6 +1,6 @@
 """
 Moduł interfejsu danych optycznych (Optical Data Fetcher).
-Odpowiada za połączenie z bazą refractiveindex.info oraz ekstrakcję
+Odpowiada za bezpieczne połączenie z bazą refractiveindex.info oraz ekstrakcję
 i interpolację stałych optycznych (współczynnika załamania n oraz ekstynkcji k)
 dla zdefiniowanej siatki energetycznej.
 """
@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from refractiveindex import RefractiveIndexMaterial
 
-# Konfiguracja kontekstu SSL dla środowisk macOS
+# Konfiguracja obejścia certyfikatów SSL dla kompatybilności ze środowiskami macOS
 try:
     _create_unverified_https_context = ssl._create_unverified_context
 except AttributeError:
@@ -21,10 +21,10 @@ else:
 
 class MaterialOpticalConstants:
     """
-    Klasa zarządzająca pobieraniem i przetwarzaniem stałych optycznych materiałów.
+    Klasa zarządzająca ekstrakcją parametrów dyspersyjnych materiałów.
 
     Atrybuty:
-        energy_grid (np.ndarray): Siatka energii w elektronowoltach (eV).
+        energy_grid (np.ndarray): Wektor energii fotonów w elektronowoltach (eV).
     """
 
     def __init__(self, e_min=0.8, e_max=6.2, num_points=100):
@@ -32,22 +32,22 @@ class MaterialOpticalConstants:
 
     def get_nk(self, shelf, book, page):
         """
-        Pobiera zespolone stałe optyczne ($n$, $k$) dla zadanego materiału.
+        Pobiera i interpoluje zespolone stałe optyczne ($n$, $k$) materiału.
 
         Argumenty:
-            shelf (str): Kategoria w bazie (np. 'main').
-            book (str): Nazwa materiału (np. 'Si').
-            page (str): Konkretna publikacja/zestaw danych (np. 'Franta-25C').
+            shelf (str): Repozytorium w bazie (np. 'main').
+            book (str): Formuła chemiczna/nazwa (np. 'Si').
+            page (str): Identyfikator publikacji (np. 'Franta-25C').
 
         Zwraca:
-            tuple: (n_vals, k_vals) jako tablice numpy odpowiadające siatce energy_grid.
+            tuple: Zwraca dwie tablice (n_vals, k_vals) zmapowane na energy_grid.
         """
         material = RefractiveIndexMaterial(shelf=shelf, book=book, page=page)
 
         try:
             n_vals = material.get_refractive_index(self.energy_grid, unit='eV')
         except Exception as e:
-            print(f"Błąd ekstrakcji współczynnika 'n' dla {book}/{page}: {e}")
+            print(f"Ostrzeżenie (Ekstrakcja 'n' dla {book}/{page}): {e}")
             n_vals = np.ones_like(self.energy_grid)
 
         try:
@@ -55,6 +55,7 @@ class MaterialOpticalConstants:
         except Exception:
             k_vals = np.zeros_like(self.energy_grid)
 
+        # Oczyszczanie danych: zamiana wartości nieliczbowych (NaN) na neutralne tło
         n_vals = np.nan_to_num(n_vals, nan=1.0)
         k_vals = np.nan_to_num(k_vals, nan=0.0)
 
@@ -62,7 +63,7 @@ class MaterialOpticalConstants:
 
 
 if __name__ == "__main__":
-    # Test jednostkowy modułu
+    # Procedura testowa modułu
     fetcher = MaterialOpticalConstants()
 
     try:
@@ -93,4 +94,4 @@ if __name__ == "__main__":
         plt.show()
 
     except Exception as e:
-        print(f"Błąd inicjalizacji testu: {e}")
+        print(f"Błąd inicjalizacji stosu optycznego: {e}")

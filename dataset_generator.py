@@ -1,8 +1,7 @@
 """
 Fizyczny symulator elipsometryczny (Forward Model).
-Implementuje metodę macierzy przejścia (Transfer Matrix Method - TMM) dla
-wielowarstwowych struktur cienkowarstwowych. Wykorzystuje przybliżenie ośrodka
-efektywnego Bruggemana (EMA) do modelowania chropowatości powierzchni.
+Implementuje formalizm macierzy przejścia (Transfer Matrix Method - TMM) oraz
+model ośrodka efektywnego Bruggemana (EMA) do symulacji rozpraszania na chropowatości.
 """
 
 import numpy as np
@@ -13,18 +12,9 @@ from data_fetcher import MaterialOpticalConstants
 
 def bruggeman_ema(n_material, n_ambient=1.0, f_material=0.5):
     """
-    Oblicza efektywny współczynnik załamania dla warstwy chropowatej z użyciem
-    modelu Bruggemana (Effective Medium Approximation).
-    Rozwiązuje równanie:
-    $f \\frac{\\epsilon_m - \\epsilon_{eff}}{\\epsilon_m + 2\\epsilon_{eff}} + (1-f) \\frac{\\epsilon_a - \\epsilon_{eff}}{\\epsilon_a + 2\\epsilon_{eff}} = 0$
-
-    Argumenty:
-        n_material (complex): Zespolony współczynnik załamania materiału bazy.
-        n_ambient (float): Współczynnik załamania otoczenia (domyślnie 1.0 dla próżni/powietrza).
-        f_material (float): Ułamek objętościowy materiału (0.0 - 1.0).
-
-    Zwraca:
-        complex: Zespolony współczynnik załamania ośrodka efektywnego ($N_{eff}$).
+    Oblicza efektywny współczynnik załamania ($N_{eff}$) dla warstwy mieszanej
+    (chropowatości) na podstawie analitycznego rozwiązania równania Bruggemana.
+    Zakłada ułamek objętościowy f=0.5 (50% materiału, 50% otoczenia).
     """
     e_m = n_material ** 2
     e_a = n_ambient ** 2
@@ -38,11 +28,11 @@ def bruggeman_ema(n_material, n_ambient=1.0, f_material=0.5):
 
 def calculate_ellipsometry(n_si, k_si, n_mat, k_mat, thickness_nm, roughness_nm, wavelengths_nm, angle_deg=70.0):
     """
-    Oblicza teoretyczne widma elipsometryczne ($\Psi$ i $\Delta$) dla modelu:
-    Ambient / Warstwa EMA (Szorstkość) / Warstwa Właściwa / Podłoże (Si).
+    Kalkulator parametrów elipsometrycznych $\Psi$ i $\Delta$ dla zadanej architektury:
+    Ambient -> Szorstkość (EMA) -> Warstwa -> Podłoże.
 
     Zwraca:
-        tuple: Wektory (psi_spectrum, delta_spectrum) w stopniach.
+        tuple: (psi_spectrum, delta_spectrum) w stopniach (tablice numpy).
     """
     th_0 = np.radians(angle_deg)
     psi_spectrum = []
@@ -76,19 +66,17 @@ def calculate_ellipsometry(n_si, k_si, n_mat, k_mat, thickness_nm, roughness_nm,
 
 
 if __name__ == "__main__":
-    # Test jednostkowy symulatora fizycznego
+    # Integracyjny test symulatora (Model: SiO2 na Si)
     fetcher = MaterialOpticalConstants()
     n_si, k_si = fetcher.get_nk('main', 'Si', 'Franta-25C')
     n_sio2, k_sio2 = fetcher.get_nk('main', 'SiO2', 'Malitson')
 
     thickness = 100.0
     roughness = 2.0
-    angle = 70.0
-
     wavelengths = 1239.84 / fetcher.energy_grid
 
     psi, delta = calculate_ellipsometry(
-        n_si, k_si, n_sio2, k_sio2, thickness, roughness, wavelengths, angle
+        n_si, k_si, n_sio2, k_sio2, thickness, roughness, wavelengths, angle_deg=70.0
     )
 
     plt.figure(figsize=(10, 5))
